@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta charset="UTF-8" />
+		<script src="https://api.mapbox.com/mapbox-gl-js/v1.13.2/mapbox-gl.js"></script>
+		<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v1.13.2/mapbox-gl.css" />
+		<title>人口・従業者数と乗合交通運行頻度</title>
+	</head>
+	<body>
+		<h1>人口・従業者数と乗合交通運行頻度</h1>
+		<div>
+			<input type="radio" name="basemap_visibility" id="basemap_blank_visibility" checked="checked" />：地理院タイル白地図
+			<input type="radio" name="basemap_visibility" id="basemap_pale_visibility" />：地理院タイル淡色地図
+			<input type="radio" name="basemap_visibility" id="basemap_std_visibility" />：地理院タイル標準地図
+			<input type="radio" name="basemap_visibility" id="basemap_seamlessphoto_visibility" />：地理院タイル写真
+			<br />
+			<input type="checkbox" id="zinko_visibility" checked="checked" />：人口の表示
+			<input type="checkbox" id="zyugyosyasu_visibility" checked="checked" />：従業者数の表示
+			<input type="checkbox" id="syugyosyasu_visibility" checked="checked" />：就業者数の表示
+			<input type="checkbox" id="syugyosyasu_private_car_visibility" checked="checked" />：自家用車利用就業者数の表示
+			<input type="checkbox" id="busstop_visibility" checked="checked" />：バス停留所の表示
+			<input type="checkbox" id="station_visibility" checked="checked" />：駅の表示
+		</div>
+		<div>バス停留所運行頻度と鉄道駅運行頻度は元データに由来する誤り・漏れ・重複が多数あります。</div>
+		<div id="div_mapbox" style="width: auto; height: 768px;"></div>
+		<div>
+			出典<br />
+			2015年人口（緑）：2015年国勢調査結果（総務省統計局）を加工して作成<br />
+			2015年就業者数（黄）：2015年国勢調査結果（総務省統計局）を加工して作成<br />
+			2015年自家用車利用就業者数（橙）：2015年国勢調査結果（総務省統計局）を加工して作成<br />
+			2014年従業者数（赤）：2014年経済センサス結果（総務省統計局）を加工して作成<br />
+			2010年バス停留所運行頻度（水）：国土数値情報（バス停留所・バスルート）（国土交通省）を加工して作成<br />
+			2019年鉄道駅運行頻度（青）：各駅昼間運行本数データを加工して作成
+		</div>
+		<script>
+		//<![CDATA[
+
+const map = new mapboxgl.Map({
+	"container": "div_mapbox",
+	"center": [140, 35.5],
+	"zoom": 8,
+	"style": {
+		"version": 8,
+		"sources": {},
+		"layers": [],
+  	},
+});
+
+map.on("load", f_load);
+
+function f_load() {
+	// 白地図
+	map.addSource("basemap_blank", {
+		"type": "raster",
+		"tiles": ["https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png",],
+		"tileSize": 256,
+		"attribution": "地理院タイル白地図",
+	});
+	map.addLayer({
+		"id": "basemap_blank",
+		"type": "raster",
+		"source": "basemap_blank",
+		"minzoom": 5,
+		"maxzoom": 14,
+	});
+	map.setLayerZoomRange("basemap_blank", 1, 22);
+	
+	// 淡色地図
+	map.addSource("basemap_pale", {
+		"type": "raster",
+		"tiles": ["https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",],
+		"tileSize": 256,
+		"attribution": "地理院タイル淡色地図 Shoreline data is derived from: United States. National Imagery and Mapping Agency. 'Vector Map Level 0 (VMAP0).' Bethesda, MD: Denver, CO: The Agency; USGS Information Services, 1997.",
+	});
+	map.addLayer({
+		"id": "basemap_pale",
+		"type": "raster",
+		"source": "basemap_pale",
+		"minzoom": 2,
+		"maxzoom": 18,
+	});
+	map.setLayerZoomRange("basemap_pale", 1, 22);
+	
+	// 標準地図
+	map.addSource("basemap_std", {
+		"type": "raster",
+		"tiles": ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",],
+		"tileSize": 256,
+		"attribution": "地理院タイル標準地図「The bathymetric contours are derived from those contained within the GEBCO Digital Atlas, published by the BODC on behalf of IOC and IHO (2003) (https://www.gebco.net)海上保安庁許可第292502号（水路業務法第25条に基づく類似刊行物）」 Shoreline data is derived from: United States. National Imagery and Mapping Agency. 'Vector Map Level 0 (VMAP0).' Bethesda, MD: Denver, CO: The Agency; USGS Information Services, 1997.",
+	});
+	map.addLayer({
+		"id": "basemap_std",
+		"type": "raster",
+		"source": "basemap_std",
+		"minzoom": 2,
+		"maxzoom": 18,
+	});
+	map.setLayerZoomRange("basemap_std", 1, 22);
+	
+	// 写真
+	map.addSource("basemap_seamlessphoto", {
+		"type": "raster",
+		"tiles": ["https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",],
+		"tileSize": 256,
+		"attribution": "地理院タイル写真 データソース：Landsat8画像（GSI,TSIC,GEO Grid/AIST）, Landsat8画像（courtesy of the U.S. Geological Survey）, 海底地形（GEBCO） Images on 世界衛星モザイク画像 obtained from site https://lpdaac.usgs.gov/data_access maintained by the NASA Land Processes Distributed Active Archive Center (LP DAAC), USGS/Earth Resources Observation and Science (EROS) Center, Sioux Falls, South Dakota, (Year). Source of image data product.",
+	});
+	map.addLayer({
+		"id": "basemap_seamlessphoto",
+		"type": "raster",
+		"source": "basemap_seamlessphoto",
+		"minzoom": 2,
+		"maxzoom": 18,
+	});
+	map.setLayerZoomRange("basemap_seamlessphoto", 1, 22);
+	
+	
+	
+	// 従業者数
+	map.addSource("point_zyugyosyasu", {
+		"type": "vector",
+		"tiles": ["http://localhost:5500/zyugyosyasu/{z}/{x}/{y}.pbf"],
+		"minzoom": 8,
+		"maxzoom": 8
+	});
+	map.addLayer({
+		"id": "point_zyugyosyasu",
+		"type": "circle",
+		"source": "point_zyugyosyasu",
+		"source-layer": "zyugyosyasu",
+		"layout": {},
+		"paint": {
+			"circle-color": "#FF0000",
+			"circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, ["*", ["^", ["get", "zyugyosyasu"], 0.5], 64]],
+			"circle-opacity": 0.5
+		},
+		"minzoom": 1,
+		"maxzoom": 22
+	});
+	map.setLayerZoomRange("point_zyugyosyasu", 1, 22);
+	
+	// 人口
+	map.addSource("point_zinko", {
+		"type": "vector",
+		"tiles": ["http://localhost:5500/zinko/{z}/{x}/{y}.pbf"],
+		"minzoom": 8,
+		"maxzoom": 8
+	});
+	map.addLayer({
+		"id": "point_zinko",
+		"type": "circle",
+		"source": "point_zinko",
+		"source-layer": "zinko",
+		"layout": {},
+		"paint": {
+			"circle-color": "#008000",
+			"circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, ["*", ["^", ["get", "zinko"], 0.5], 64]],
+			"circle-opacity": 0.5
+		},
+		"minzoom": 1,
+		"maxzoom": 22
+	});
+	map.setLayerZoomRange("point_zinko", 1, 22);
+	
+	// 就業者数
+	map.addSource("point_syugyosyasu", {
+		"type": "vector",
+		"tiles": ["http://localhost:5500/syugyosyasu/{z}/{x}/{y}.pbf"],
+		"minzoom": 8,
+		"maxzoom": 8
+	});
+	map.addLayer({
+		"id": "point_syugyosyasu",
+		"type": "circle",
+		"source": "point_syugyosyasu",
+		"source-layer": "syugyosyasu",
+		"layout": {},
+		"paint": {
+			"circle-color": "#FFC000",
+			"circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, ["*", ["^", ["get", "total"], 0.5], 64]],
+			"circle-opacity": 0.5
+		},
+		"minzoom": 1,
+		"maxzoom": 22
+	});
+	map.setLayerZoomRange("point_syugyosyasu", 1, 22);
+	map.addLayer({
+		"id": "point_syugyosyasu_private_car",
+		"type": "circle",
+		"source": "point_syugyosyasu",
+		"source-layer": "syugyosyasu",
+		"layout": {},
+		"paint": {
+			"circle-color": "#FF8000",
+			"circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, ["*", ["^", ["get", "private_car"], 0.5], 64]],
+			"circle-opacity": 0.5
+		},
+		"minzoom": 1,
+		"maxzoom": 22
+	});
+	map.setLayerZoomRange("point_syugyosyasu_private_car", 1, 22);
+	
+	// バス停留所
+	map.addSource("point_busstop", {
+		"type": "vector",
+		"tiles": ["http://localhost:5500/busstop/{z}/{x}/{y}.pbf"],
+		"minzoom": 8,
+		"maxzoom": 8
+	});
+	map.addLayer({
+		"id": "point_busstop",
+		"type": "circle",
+		"source": "point_busstop",
+		"source-layer": "busstop",
+		"layout": {},
+		"paint": {
+			"circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, [
+				"case",
+				["<", ["get", "frequency"], 16], 512,
+				["<", ["get", "frequency"], 64], 1024,
+				["<", ["get", "frequency"], 128], 1536,
+				2048
+			]],
+			//"circle-stroke-width": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, 512],
+			//"circle-stroke-color": "#0080FF",
+			//"circle-stroke-opacity" : 0.5,
+			"circle-color": "#0080FF",
+			"circle-opacity": 1
+		},
+		"minzoom": 1,
+		"maxzoom": 22
+	});
+	map.setLayerZoomRange("point_busstop", 1, 22);
+	
+	// 駅
+	map.addSource("point_station", {
+		"type": "vector",
+		"tiles": ["http://localhost:5500/station/{z}/{x}/{y}.pbf"],
+		"minzoom": 8,
+		"maxzoom": 8
+	});
+	map.addLayer({
+		"id": "point_station",
+		"type": "circle",
+		"source": "point_station",
+		"source-layer": "station",
+		"layout": {},
+		"paint": {
+			"circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, [
+				"case",
+				["<", ["get", "frequency"], 1], 512,
+				["<", ["get", "frequency"], 3], 1024,
+				["<", ["get", "frequency"], 6], 1536,
+				2048
+			]],
+			//"circle-stroke-width": ["interpolate", ["exponential", 2], ["zoom"], 0, 0, 20, 512],
+			//"circle-stroke-color": "#0000FF",
+			//"circle-stroke-opacity" : 0.5,
+			"circle-color": "#0000FF",
+			"circle-opacity": 1
+		},
+		"minzoom": 1,
+		"maxzoom": 22
+	});
+	map.setLayerZoomRange("point_station", 1, 22);
+	
+	f_visible_zinko();
+	f_visible_zyugyosyasu();
+	f_visible_syugyosyasu();
+	f_visible_syugyosyasu_private_car();
+	f_visible_busstop();
+	f_visible_station();
+	f_visible_basemap();
+}
+
+function f_visible_zinko(){
+	if (document.getElementById("zinko_visibility").checked){
+		map.setLayoutProperty("point_zinko", "visibility", "visible");
+	} else {
+		map.setLayoutProperty("point_zinko", "visibility", "none");
+	}
+}
+function f_visible_zyugyosyasu(){
+	if (document.getElementById("zyugyosyasu_visibility").checked){
+		map.setLayoutProperty("point_zyugyosyasu", "visibility", "visible");
+	} else {
+		map.setLayoutProperty("point_zyugyosyasu", "visibility", "none");
+	}
+}
+function f_visible_syugyosyasu(){
+	if (document.getElementById("syugyosyasu_visibility").checked){
+		map.setLayoutProperty("point_syugyosyasu", "visibility", "visible");
+	} else {
+		map.setLayoutProperty("point_syugyosyasu", "visibility", "none");
+	}
+}
+function f_visible_syugyosyasu_private_car(){
+	if (document.getElementById("syugyosyasu_private_car_visibility").checked){
+		map.setLayoutProperty("point_syugyosyasu_private_car", "visibility", "visible");
+	} else {
+		map.setLayoutProperty("point_syugyosyasu_private_car", "visibility", "none");
+	}
+}
+function f_visible_busstop(){
+	if (document.getElementById("busstop_visibility").checked){
+		map.setLayoutProperty("point_busstop", "visibility", "visible");
+	} else {
+		map.setLayoutProperty("point_busstop", "visibility", "none");
+	}
+}
+function f_visible_station(){
+	if (document.getElementById("station_visibility").checked){
+		map.setLayoutProperty("point_station", "visibility", "visible");
+	} else {
+		map.setLayoutProperty("point_station", "visibility", "none");
+	}
+}
+function f_visible_basemap(){
+	map.setLayoutProperty("basemap_blank", "visibility", "none");
+	map.setLayoutProperty("basemap_pale", "visibility", "none");
+	map.setLayoutProperty("basemap_std", "visibility", "none");
+	map.setLayoutProperty("basemap_seamlessphoto", "visibility", "none");
+	if (document.getElementById("basemap_blank_visibility").checked){
+		map.setLayoutProperty("basemap_blank", "visibility", "visible");
+	} else if(document.getElementById("basemap_pale_visibility").checked) {
+		map.setLayoutProperty("basemap_pale", "visibility", "visible");
+	} else if(document.getElementById("basemap_std_visibility").checked) {
+		map.setLayoutProperty("basemap_std", "visibility", "visible");
+	} else if(document.getElementById("basemap_seamlessphoto_visibility").checked) {
+		map.setLayoutProperty("basemap_seamlessphoto", "visibility", "visible");
+	}
+}
+document.getElementById("zinko_visibility").addEventListener("change", f_visible_zinko);
+document.getElementById("zyugyosyasu_visibility").addEventListener("change", f_visible_zyugyosyasu);
+document.getElementById("syugyosyasu_visibility").addEventListener("change", f_visible_syugyosyasu);
+document.getElementById("syugyosyasu_private_car_visibility").addEventListener("change", f_visible_syugyosyasu_private_car);
+document.getElementById("busstop_visibility").addEventListener("change", f_visible_busstop);
+document.getElementById("station_visibility").addEventListener("change", f_visible_station);
+document.getElementById("basemap_blank_visibility").addEventListener("change", f_visible_basemap);
+document.getElementById("basemap_pale_visibility").addEventListener("change", f_visible_basemap);
+document.getElementById("basemap_std_visibility").addEventListener("change", f_visible_basemap);
+document.getElementById("basemap_seamlessphoto_visibility").addEventListener("change", f_visible_basemap);
+
+		//]]>
+		</script>
+	</body>
+</html>
