@@ -46,6 +46,7 @@ const map = new mapboxgl.Map({
 		"layers": [],
   	},
 });
+map.addControl(new mapboxgl.NavigationControl());
 
 map.on("load", f_load);
 
